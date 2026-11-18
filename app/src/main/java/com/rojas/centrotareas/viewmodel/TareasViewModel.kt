@@ -9,6 +9,8 @@ import com.rojas.centrotareas.model.PrimosUi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -105,6 +107,39 @@ class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
     // ----- Dos cargas (pasos 6 y 7)
     private val _carga = MutableStateFlow<CargaUi>(CargaUi.Inicial)
     val carga: StateFlow<CargaUi> = _carga.asStateFlow()
-    // TODO Paso 6: fun cargarUnaPorUna() y fun cargarALaVez()
+
+    // Carga una por una: primero el perfil (2 s) y después los pedidos (3 s) = unos 5 s
+    fun cargarUnaPorUna() {
+        // Si ya está cargando no lanzo otra carga
+        if (_carga.value is CargaUi.Cargando) return
+
+        _carga.value = CargaUi.Cargando
+        viewModelScope.launch {
+            val inicio = System.currentTimeMillis()
+            val perfil = repo.cargarPerfil()
+            val pedidos = repo.cargarPedidos(false)
+            val milisegundos = System.currentTimeMillis() - inicio
+            _carga.value = CargaUi.Exito("Una por una", perfil, pedidos.size, milisegundos)
+        }
+    }
+
+    // Carga a la vez: las dos llamadas empiezan juntas con async = unos 3 s (la más lenta)
+    fun cargarALaVez() {
+        if (_carga.value is CargaUi.Cargando) return
+
+        _carga.value = CargaUi.Cargando
+        viewModelScope.launch {
+            val inicio = System.currentTimeMillis()
+            val (perfil, pedidos) = coroutineScope {
+                val perfilAsync = async { repo.cargarPerfil() }
+                val pedidosAsync = async { repo.cargarPedidos(false) }
+                // await espera a que cada una termine
+                Pair(perfilAsync.await(), pedidosAsync.await())
+            }
+            val milisegundos = System.currentTimeMillis() - inicio
+            _carga.value = CargaUi.Exito("A la vez", perfil, pedidos.size, milisegundos)
+        }
+    }
+
     // TODO Paso 7: simularError y manejo de errores
 }

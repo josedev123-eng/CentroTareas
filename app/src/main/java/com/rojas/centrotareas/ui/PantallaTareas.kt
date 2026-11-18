@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.rojas.centrotareas.model.CargaUi
 import com.rojas.centrotareas.model.PrimosUi
 import com.rojas.centrotareas.ui.theme.VerdeExito
 import com.rojas.centrotareas.ui.theme.VerdeExitoTexto
@@ -47,6 +48,7 @@ fun PantallaTareas(vm: TareasViewModel) {
     val progreso by vm.progreso.collectAsState()
     val corriendo by vm.corriendo.collectAsState()
     val primos by vm.primos.collectAsState()
+    val carga by vm.carga.collectAsState()
 
     // Texto del campo numérico de los primos
     var textoHasta by rememberSaveable { mutableStateOf("500000") }
@@ -148,8 +150,36 @@ fun PantallaTareas(vm: TareasViewModel) {
             }
 
             TarjetaTarea(titulo = "Dos cargas") {
-                // TODO Pasos 6 y 7: botones Una por una / A la vez, interruptor y resultado
-                Text("Pendiente")
+                // TODO Paso 7: interruptor Simular error y recuadro de error
+                val cargando = carga is CargaUi.Cargando
+
+                // Mientras carga, los dos botones se deshabilitan
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = { vm.cargarUnaPorUna() },
+                        enabled = !cargando
+                    ) {
+                        Text("Una por una")
+                    }
+                    Button(
+                        onClick = { vm.cargarALaVez() },
+                        enabled = !cargando
+                    ) {
+                        Text("A la vez")
+                    }
+                }
+
+                when (val c = carga) {
+                    is CargaUi.Inicial -> Text("Elige cómo cargar el perfil y los pedidos")
+                    is CargaUi.Cargando -> {
+                        CircularProgressIndicator()
+                        Text("Cargando...")
+                    }
+                    is CargaUi.Exito -> RecuadroExito(
+                        "Modo: ${c.modo}\nPerfil: ${c.perfil}\nPedidos: ${c.pedidos}\nTiempo: ${c.milisegundos} ms"
+                    )
+                    is CargaUi.Error -> Text(c.mensaje)
+                }
             }
         }
     }
