@@ -1,6 +1,7 @@
 package com.rojas.centrotareas.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -8,13 +9,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -23,11 +28,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.rojas.centrotareas.model.PrimosUi
+import com.rojas.centrotareas.ui.theme.VerdeExito
+import com.rojas.centrotareas.ui.theme.VerdeExitoTexto
 import com.rojas.centrotareas.viewmodel.TareasViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,6 +46,10 @@ fun PantallaTareas(vm: TareasViewModel) {
     val mensaje by vm.mensaje.collectAsState()
     val progreso by vm.progreso.collectAsState()
     val corriendo by vm.corriendo.collectAsState()
+    val primos by vm.primos.collectAsState()
+
+    // Texto del campo numérico de los primos
+    var textoHasta by rememberSaveable { mutableStateOf("500000") }
 
     // Contador del botón Tócame (es solo de la pantalla)
     var toques by rememberSaveable { mutableIntStateOf(0) }
@@ -91,8 +105,46 @@ fun PantallaTareas(vm: TareasViewModel) {
             }
 
             TarjetaTarea(titulo = "Contar números primos") {
-                // TODO Paso 5: campo numérico, botones Contar / Cancelar y resultado
-                Text("Pendiente")
+                // Solo se acepta un número entero mayor o igual a 2
+                val hasta = textoHasta.toIntOrNull()
+                val numeroValido = hasta != null && hasta >= 2
+                val calculando = primos is PrimosUi.Calculando
+
+                OutlinedTextField(
+                    value = textoHasta,
+                    onValueChange = { textoHasta = it },
+                    label = { Text("Contar primos hasta") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { if (hasta != null) vm.contar(hasta) },
+                        enabled = numeroValido && !calculando
+                    ) {
+                        Text("Contar")
+                    }
+                    OutlinedButton(
+                        onClick = { vm.cancelarPrimos() },
+                        enabled = calculando
+                    ) {
+                        Text("Cancelar")
+                    }
+                }
+
+                when (val p = primos) {
+                    is PrimosUi.Inicial -> Text("Escribe un número y pulsa Contar")
+                    is PrimosUi.Calculando -> {
+                        CircularProgressIndicator()
+                        Text("Calculando...")
+                    }
+                    is PrimosUi.Listo -> RecuadroExito(
+                        "Primos encontrados: ${p.cantidad}\nTiempo: ${p.milisegundos} ms"
+                    )
+                    is PrimosUi.Cancelado -> Text("Cancelado")
+                }
             }
 
             TarjetaTarea(titulo = "Dos cargas") {
@@ -120,4 +172,17 @@ fun TarjetaTarea(titulo: String, contenido: @Composable ColumnScope.() -> Unit) 
             contenido()
         }
     }
+}
+
+// Recuadro verde para mostrar un resultado
+@Composable
+fun RecuadroExito(texto: String) {
+    Text(
+        text = texto,
+        color = VerdeExitoTexto,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(VerdeExito, RoundedCornerShape(8.dp))
+            .padding(12.dp)
+    )
 }
