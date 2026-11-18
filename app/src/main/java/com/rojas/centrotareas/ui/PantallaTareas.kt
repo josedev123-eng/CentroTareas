@@ -5,9 +5,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -21,6 +23,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -31,6 +34,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -49,6 +53,7 @@ fun PantallaTareas(vm: TareasViewModel) {
     val corriendo by vm.corriendo.collectAsState()
     val primos by vm.primos.collectAsState()
     val carga by vm.carga.collectAsState()
+    val simularError by vm.simularError.collectAsState()
 
     // Texto del campo numérico de los primos
     var textoHasta by rememberSaveable { mutableStateOf("500000") }
@@ -150,8 +155,17 @@ fun PantallaTareas(vm: TareasViewModel) {
             }
 
             TarjetaTarea(titulo = "Dos cargas") {
-                // TODO Paso 7: interruptor Simular error y recuadro de error
                 val cargando = carga is CargaUi.Cargando
+
+                // Interruptor para simular que los pedidos fallan
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(
+                        checked = simularError,
+                        onCheckedChange = { vm.cambiarSimularError(it) }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Simular error")
+                }
 
                 // Mientras carga, los dos botones se deshabilitan
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -178,7 +192,10 @@ fun PantallaTareas(vm: TareasViewModel) {
                     is CargaUi.Exito -> RecuadroExito(
                         "Modo: ${c.modo}\nPerfil: ${c.perfil}\nPedidos: ${c.pedidos}\nTiempo: ${c.milisegundos} ms"
                     )
-                    is CargaUi.Error -> Text(c.mensaje)
+                    is CargaUi.Error -> RecuadroError(
+                        mensaje = c.mensaje,
+                        onReintentar = { vm.cargarALaVez() }
+                    )
                 }
             }
         }
@@ -215,4 +232,21 @@ fun RecuadroExito(texto: String) {
             .background(VerdeExito, RoundedCornerShape(8.dp))
             .padding(12.dp)
     )
+}
+
+// Recuadro con el color de error, el mensaje y el botón Reintentar
+@Composable
+fun RecuadroError(mensaje: String, onReintentar: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(mensaje, color = MaterialTheme.colorScheme.onErrorContainer)
+        Button(onClick = onReintentar) {
+            Text("Reintentar")
+        }
+    }
 }
