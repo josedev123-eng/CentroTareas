@@ -22,13 +22,24 @@ class TareasRepositoryLocal : TareasRepository {
     }
 
     // Cálculo pesado: se hace en Dispatchers.Default para no bloquear el hilo principal
-    override suspend fun contarPrimos(hasta: Int): Int = withContext(Dispatchers.Default) {
+    override suspend fun contarPrimos(hasta: Int, onProgreso: (Float) -> Unit): Int = withContext(Dispatchers.Default) {
         var cantidad = 0
+        var porcentajeAnterior = -1
+
         for (n in 2..hasta) {
             // Si cancelaron la corrutina, aquí se detiene el ciclo
             ensureActive()
             if (esPrimo(n)) {
                 cantidad++
+            }
+
+            // Calcula el porcentaje entero actual (0 a 100)
+            val porcentajeActual = (n.toLong() * 100 / hasta).toInt()
+
+            // Solo notifica cuando cambia el porcentaje entero (1 %, 2 %, ...)
+            if (porcentajeActual != porcentajeAnterior) {
+                porcentajeAnterior = porcentajeActual
+                onProgreso(porcentajeActual / 100f)
             }
         }
         cantidad

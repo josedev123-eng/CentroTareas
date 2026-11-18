@@ -85,11 +85,13 @@ class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
         // Si ya está calculando no lanzo otro cálculo
         if (_primos.value is PrimosUi.Calculando) return
 
-        _primos.value = PrimosUi.Calculando
+        _primos.value = PrimosUi.Calculando(0f)
         trabajoPrimos = viewModelScope.launch {
             val inicio = System.currentTimeMillis()
             try {
-                val cantidad = repo.contarPrimos(hasta)
+                val cantidad = repo.contarPrimos(hasta) { progreso ->
+                    _primos.value = PrimosUi.Calculando(progreso)
+                }
                 val milisegundos = System.currentTimeMillis() - inicio
                 _primos.value = PrimosUi.Listo(cantidad, milisegundos)
             } catch (e: CancellationException) {

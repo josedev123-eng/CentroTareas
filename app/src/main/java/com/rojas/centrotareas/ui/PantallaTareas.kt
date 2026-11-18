@@ -41,6 +41,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.rojas.centrotareas.model.CargaUi
 import com.rojas.centrotareas.model.PrimosUi
+import com.rojas.centrotareas.ui.theme.AmbarPrimos
 import com.rojas.centrotareas.ui.theme.VerdeExito
 import com.rojas.centrotareas.ui.theme.VerdeExitoTexto
 import com.rojas.centrotareas.viewmodel.TareasViewModel
@@ -144,8 +145,14 @@ fun PantallaTareas(vm: TareasViewModel) {
                 when (val p = primos) {
                     is PrimosUi.Inicial -> Text("Escribe un número y pulsa Contar")
                     is PrimosUi.Calculando -> {
-                        CircularProgressIndicator()
-                        Text("Calculando...")
+                        // Barra ámbar: distingue el cálculo pesado de la tarea simple (azul)
+                        LinearProgressIndicator(
+                            progress = { p.progreso },
+                            modifier = Modifier.fillMaxWidth(),
+                            color = AmbarPrimos,
+                            trackColor = AmbarPrimos.copy(alpha = 0.25f)
+                        )
+                        Text("${(p.progreso * 100).toInt()} %")
                     }
                     is PrimosUi.Listo -> RecuadroExito(
                         "Primos encontrados: ${p.cantidad}\nTiempo: ${p.milisegundos} ms"
