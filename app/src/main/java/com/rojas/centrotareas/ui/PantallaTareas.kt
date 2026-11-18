@@ -194,7 +194,7 @@ fun PantallaTareas(vm: TareasViewModel) {
                     is CargaUi.Inicial -> Text("Elige cómo cargar el perfil y los pedidos")
                     is CargaUi.Cargando -> {
                         CircularProgressIndicator()
-                        Text("Cargando...")
+                        Text("Cargando... (Intento ${c.intento} de ${c.total})")
                     }
                     is CargaUi.Exito -> RecuadroExito(
                         "Modo: ${c.modo}\nPerfil: ${c.perfil}\nPedidos: ${c.pedidos}\nTiempo: ${c.milisegundos} ms"

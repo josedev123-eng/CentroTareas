@@ -9,7 +9,7 @@ sealed interface PrimosUi {
 
 sealed interface CargaUi {
     data object Inicial : CargaUi
-    data object Cargando : CargaUi
+    data class Cargando(val intento: Int = 1, val total: Int = 1) : CargaUi
     data class Exito(
         val modo: String,
         val perfil: String,
