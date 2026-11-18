@@ -7,6 +7,7 @@ import com.rojas.centrotareas.data.TareasRepository
 import com.rojas.centrotareas.model.CargaUi
 import com.rojas.centrotareas.model.PrimosUi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,30 +25,51 @@ class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
     private val _progreso = MutableStateFlow(0f)
     val progreso: StateFlow<Float> = _progreso.asStateFlow()
 
+    // Guarda la corrutina de la tarea para poder cancelarla
+    private var trabajo: Job? = null
+
+    // true mientras la tarea está trabajando
+    private val _corriendo = MutableStateFlow(false)
+    val corriendo: StateFlow<Boolean> = _corriendo.asStateFlow()
+
     // La tarea larga corre en una corrutina: el hilo principal queda libre
     fun tareaLarga() {
-        viewModelScope.launch {
-            _progreso.value = 0f
-            _mensaje.value = "Trabajando..."
-            Log.d("HILO", "Antes: ${Thread.currentThread().name}")
+        // Si ya está corriendo no lanzo otra
+        if (_corriendo.value) return
 
-            // El trabajo se hace en un hilo de fondo (Dispatchers.Default):
-            // 100 vueltas de 40 ms, en total unos 4 segundos
-            withContext(Dispatchers.Default) {
-                Log.d("HILO", "Dentro: ${Thread.currentThread().name}")
-                for (i in 1..100) {
-                    delay(40)
-                    _progreso.value = i / 100f
+        _corriendo.value = true
+        trabajo = viewModelScope.launch {
+            try {
+                _progreso.value = 0f
+                _mensaje.value = "Trabajando..."
+                Log.d("HILO", "Antes: ${Thread.currentThread().name}")
+
+                // El trabajo se hace en un hilo de fondo (Dispatchers.Default):
+                // 100 vueltas de 40 ms, en total unos 4 segundos
+                withContext(Dispatchers.Default) {
+                    Log.d("HILO", "Dentro: ${Thread.currentThread().name}")
+                    for (i in 1..100) {
+                        delay(40)
+                        _progreso.value = i / 100f
+                    }
                 }
-            }
 
-            // Al salir de withContext volvemos al hilo principal
-            Log.d("HILO", "Despues: ${Thread.currentThread().name}")
-            _mensaje.value = "Terminó"
+                // Al salir de withContext volvemos al hilo principal
+                Log.d("HILO", "Despues: ${Thread.currentThread().name}")
+                _mensaje.value = "Terminó"
+            } finally {
+                // Termine bien o la cancelen, deja de estar corriendo
+                _corriendo.value = false
+            }
         }
     }
 
-    // TODO Paso 4: trabajo (Job), corriendo y cancelar()
+    // Detiene la tarea a mitad de camino. La barra se queda donde estaba
+    fun cancelar() {
+        trabajo?.cancel()
+        _mensaje.value = "Cancelado"
+    }
+
 
     // ----- Contar primos (paso 5)
     private val _primos = MutableStateFlow<PrimosUi>(PrimosUi.Inicial)
