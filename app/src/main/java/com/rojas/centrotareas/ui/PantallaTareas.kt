@@ -41,6 +41,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.rojas.centrotareas.model.CargaUi
 import com.rojas.centrotareas.model.PrimosUi
+import com.rojas.centrotareas.model.RegistroTiempo
 import com.rojas.centrotareas.ui.theme.AmbarPrimos
 import com.rojas.centrotareas.ui.theme.VerdeExito
 import com.rojas.centrotareas.ui.theme.VerdeExitoTexto
@@ -55,6 +56,12 @@ fun PantallaTareas(vm: TareasViewModel) {
     val primos by vm.primos.collectAsState()
     val carga by vm.carga.collectAsState()
     val simularError by vm.simularError.collectAsState()
+
+    // Estados para la tabla de comparación de tiempos
+    val registros by vm.registros.collectAsState()
+    val promedioUnaPorUna by vm.promedioUnaPorUna.collectAsState()
+    val promedioALaVez by vm.promedioALaVez.collectAsState()
+    val mensajeDiferencia by vm.mensajeDiferencia.collectAsState()
 
     // Texto del campo numérico de los primos
     var textoHasta by rememberSaveable { mutableStateOf("500000") }
@@ -204,6 +211,17 @@ fun PantallaTareas(vm: TareasViewModel) {
                         onReintentar = { vm.cargarALaVez() }
                     )
                 }
+
+                // Muestra la tabla de comparación si hay al menos un registro exitoso
+                if (registros.isNotEmpty()) {
+                    TablaComparacion(
+                        registros = registros,
+                        promedioUnaPorUna = promedioUnaPorUna,
+                        promedioALaVez = promedioALaVez,
+                        mensajeDiferencia = mensajeDiferencia,
+                        onLimpiar = { vm.limpiarTabla() }
+                    )
+                }
             }
         }
     }
@@ -254,6 +272,92 @@ fun RecuadroError(mensaje: String, onReintentar: () -> Unit) {
         Text(mensaje, color = MaterialTheme.colorScheme.onErrorContainer)
         Button(onClick = onReintentar) {
             Text("Reintentar")
+        }
+    }
+}
+
+// Tabla para comparar los tiempos de ejecución de "Una por una" y "A la vez"
+@Composable
+fun TablaComparacion(
+    registros: List<RegistroTiempo>,
+    promedioUnaPorUna: Long?,
+    promedioALaVez: Long?,
+    mensajeDiferencia: String,
+    onLimpiar: () -> Unit
+) {
+    val unaPorUna = registros.filter { it.modo == "Una por una" }
+    val aLaVez = registros.filter { it.modo == "A la vez" }
+    val maxFilas = maxOf(unaPorUna.size, aLaVez.size)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Comparación de tiempos",
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleSmall
+        )
+
+        // Encabezados de la tabla
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "Una por una",
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "A la vez",
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Filas con los tiempos registrados
+        for (i in 0 until maxFilas) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                val tiempoUna = if (i < unaPorUna.size) "${unaPorUna[i].milisegundos} ms" else "-"
+                val tiempoVez = if (i < aLaVez.size) "${aLaVez[i].milisegundos} ms" else "-"
+                Text(tiempoUna, modifier = Modifier.weight(1f))
+                Text(tiempoVez, modifier = Modifier.weight(1f))
+            }
+        }
+
+        // Fila de promedios
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                // Si no hay datos de ese modo se muestra "-"
+                text = "Prom: " + (if (promedioUnaPorUna != null) "$promedioUnaPorUna ms" else "-"),
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "Prom: " + (if (promedioALaVez != null) "$promedioALaVez ms" else "-"),
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Mensaje con la diferencia si ambos modos se ejecutaron
+        if (mensajeDiferencia.isNotEmpty()) {
+            Text(
+                text = mensajeDiferencia,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.secondary
+            )
+        }
+
+        // Botón para limpiar los registros acumulados
+        OutlinedButton(
+            onClick = onLimpiar,
+            modifier = Modifier.align(Alignment.End)
+        ) {
+            Text("Limpiar tabla")
         }
     }
 }

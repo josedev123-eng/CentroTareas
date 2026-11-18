@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.rojas.centrotareas.data.TareasRepository
 import com.rojas.centrotareas.model.CargaUi
 import com.rojas.centrotareas.model.PrimosUi
+import com.rojas.centrotareas.model.RegistroTiempo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -118,6 +119,57 @@ class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
         _simularError.value = valor
     }
 
+    // ----- Comparación de tiempos
+    private val _registros = MutableStateFlow<List<RegistroTiempo>>(emptyList())
+    val registros: StateFlow<List<RegistroTiempo>> = _registros.asStateFlow()
+
+    // Promedios: null cuando ese modo todavía no tiene datos
+    private val _promedioUnaPorUna = MutableStateFlow<Long?>(null)
+    val promedioUnaPorUna: StateFlow<Long?> = _promedioUnaPorUna.asStateFlow()
+
+    private val _promedioALaVez = MutableStateFlow<Long?>(null)
+    val promedioALaVez: StateFlow<Long?> = _promedioALaVez.asStateFlow()
+
+    private val _mensajeDiferencia = MutableStateFlow("")
+    val mensajeDiferencia: StateFlow<String> = _mensajeDiferencia.asStateFlow()
+
+    // Borra la lista de tiempos y reinicia los promedios
+    fun limpiarTabla() {
+        _registros.value = emptyList()
+        recalcularPromedios(emptyList())
+    }
+
+    // Agrega una medición exitosa y recalcula los promedios
+    private fun guardarRegistro(modo: String, milisegundos: Long) {
+        val nuevaLista = _registros.value + RegistroTiempo(modo, milisegundos)
+        _registros.value = nuevaLista
+        recalcularPromedios(nuevaLista)
+    }
+
+    // Calcula los promedios y el mensaje de diferencia
+    private fun recalcularPromedios(lista: List<RegistroTiempo>) {
+        val tiemposUnaPorUna = lista.filter { it.modo == "Una por una" }.map { it.milisegundos }
+        val tiemposALaVez = lista.filter { it.modo == "A la vez" }.map { it.milisegundos }
+
+        // Si un modo no tiene datos su promedio es null (no 0, porque 0 ms parecería un tiempo real)
+        val promUna = if (tiemposUnaPorUna.isNotEmpty()) tiemposUnaPorUna.average().toLong() else null
+        val promVez = if (tiemposALaVez.isNotEmpty()) tiemposALaVez.average().toLong() else null
+
+        _promedioUnaPorUna.value = promUna
+        _promedioALaVez.value = promVez
+
+        if (promUna != null && promVez != null) {
+            val diff = promUna - promVez
+            _mensajeDiferencia.value = if (diff >= 0) {
+                "A la vez fue $diff ms más rápido en promedio"
+            } else {
+                "Una por una fue ${-diff} ms más rápido en promedio"
+            }
+        } else {
+            _mensajeDiferencia.value = ""
+        }
+    }
+
     // Cantidad máxima de intentos: se define en un solo lugar y viaja en el estado
     private val MAX_INTENTOS = 3
 
@@ -138,7 +190,10 @@ class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
                 }
 
                 try {
-                    _carga.value = bloque()
+                    val resultado = bloque()
+                    _carga.value = resultado
+                    // Guarda el tiempo registrado solo si la carga fue exitosa
+                    guardarRegistro(resultado.modo, resultado.milisegundos)
                     return@launch // Si la carga tuvo éxito, termina
                 } catch (e: Exception) {
                     // La cancelación NO se reintenta: se relanza siempre

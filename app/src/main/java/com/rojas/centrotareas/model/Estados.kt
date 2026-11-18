@@ -18,3 +18,9 @@ sealed interface CargaUi {
     ) : CargaUi
     data class Error(val mensaje: String) : CargaUi
 }
+
+// Registro de cada carga exitosa para la tabla de comparación
+data class RegistroTiempo(
+    val modo: String,
+    val milisegundos: Long
+)
