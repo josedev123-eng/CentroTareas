@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -31,6 +32,7 @@ import com.rojas.centrotareas.viewmodel.TareasViewModel
 @Composable
 fun PantallaTareas(vm: TareasViewModel) {
     val mensaje by vm.mensaje.collectAsState()
+    val progreso by vm.progreso.collectAsState()
 
     // Contador del botón Tócame (es solo de la pantalla)
     var toques by rememberSaveable { mutableIntStateOf(0) }
@@ -60,10 +62,17 @@ fun PantallaTareas(vm: TareasViewModel) {
             }
 
             TarjetaTarea(titulo = "Tarea con progreso") {
-                // TODO Pasos 2 a 4: botones Iniciar / Cancelar y barra de progreso
+                // TODO Paso 4: botón Cancelar
                 Button(onClick = { vm.tareaLarga() }) {
-                    Text("Tarea larga")
+                    Text("Iniciar")
                 }
+
+                // Barra de progreso y el porcentaje debajo
+                LinearProgressIndicator(
+                    progress = { progreso },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text("${(progreso * 100).toInt()} %")
                 Text(mensaje)
             }
 

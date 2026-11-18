@@ -20,16 +20,25 @@ class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
     private val _mensaje = MutableStateFlow("Listo")
     val mensaje: StateFlow<String> = _mensaje.asStateFlow()
 
+    // Progreso de la tarea, de 0f a 1f. Afuera solo se puede leer
+    private val _progreso = MutableStateFlow(0f)
+    val progreso: StateFlow<Float> = _progreso.asStateFlow()
+
     // La tarea larga corre en una corrutina: el hilo principal queda libre
     fun tareaLarga() {
         viewModelScope.launch {
+            _progreso.value = 0f
             _mensaje.value = "Trabajando..."
             Log.d("HILO", "Antes: ${Thread.currentThread().name}")
 
-            // La espera se hace en un hilo de fondo (Dispatchers.Default)
+            // El trabajo se hace en un hilo de fondo (Dispatchers.Default):
+            // 100 vueltas de 40 ms, en total unos 4 segundos
             withContext(Dispatchers.Default) {
                 Log.d("HILO", "Dentro: ${Thread.currentThread().name}")
-                delay(4000)
+                for (i in 1..100) {
+                    delay(40)
+                    _progreso.value = i / 100f
+                }
             }
 
             // Al salir de withContext volvemos al hilo principal
@@ -38,7 +47,6 @@ class TareasViewModel(private val repo: TareasRepository) : ViewModel() {
         }
     }
 
-    // TODO Paso 3: progreso
     // TODO Paso 4: trabajo (Job), corriendo y cancelar()
 
     // ----- Contar primos (paso 5)
